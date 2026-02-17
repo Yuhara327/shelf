@@ -29,7 +29,7 @@ import asyncio
 import sqlite3
 from create_db import createdb
 
-# SQLiteデータベースに接続
+# SQLiteデータベースがあるかどうか。なければ作成
 createdb()
 
 # PILにHEICサポートを追加
@@ -94,7 +94,7 @@ class Book:
     #     )
 
 
-# インスタンス作成。API叩きから文字列を受け取ってbookクラスにする関数。
+# インスタンス作成。API叩きから文字列を受け取ってbookクラスを返す関数。
 def create_book_from_data(isbn, bookdata):
     isbn = f"{isbn}"
     items = bookdata.get("rss", {}).get("channel", {}).get("item", [])
@@ -121,6 +121,32 @@ def create_book_from_data(isbn, bookdata):
     return Book(isbn, title, creator, publisher, issued)
 
 
+# データベースに本を保存
+def save_to_book_db(books):
+    conn = sqlite3.connect("books.db")
+    cursor = conn.cursor()
+    insert_query = """
+        INSERT OR REPLACE INTO books (isbn, title, creator, publisher, issued, classification, readed)
+        VALUES ( ?, ?, ?, ?, ?, ?, ?)
+    """
+    for book in books:
+        cursor.execute(
+            insert_query,
+            (
+                book.isbn,
+                book.title,
+                book.creator,
+                book.publisher,
+                book.issued,
+                book.classification if book.classification is not None else "",
+                int(book.readed),
+            ),
+        )
+
+    conn.commit()
+    conn.close()
+
+
 # # ファイルに保存(SQL化のため不要)
 # def save_library_to_file(library, filename="library.json"):
 #     # ユーザーのホームディレクトリを取得
@@ -144,72 +170,97 @@ def create_book_from_data(isbn, bookdata):
 #         )  # Bookインスタンスから辞書に変換して保存
 
 
-# ファイル読み込み(jsonを読んでbookを返す(要修正))
-def load_library_from_file(filename="library.json"):
-    # ユーザーのホームディレクトリを取得
-    home_directory = os.path.expanduser("~")
-    # 'Documents/Shelf/'ディレクトリに結合してフルパスを作成
-    library_dir = os.path.join(home_directory, "Documents", "Shelf")
-    library_path = os.path.join(library_dir, filename)
-    # 例外処理
-    ## 'Documents/Shelf' ディレクトリが存在しない場合、作成する
-    if not os.path.exists(library_dir):
-        os.makedirs(library_dir)
-    ## 'library.json' が存在しない場合、空のファイルを作成
-    if not os.path.exists(library_path):
-        with open(library_path, "w", encoding="utf-8") as f:
-            json.dump([], f)  # 空のリストをJSONとして保存
-            mainwindow.show_info("library.jsonが書類/Shelfに作成されています。")
-    # ファイルを読み込み
-    try:
-        with open(library_path, "r", encoding="utf-8") as f:
-            books_lib = json.load(f)
-            return [
-                Book.from_dict(data) for data in books_lib
-            ]  # 辞書からBookインスタンスに変換
-    except json.JSONDecodeError:
-        mainwindow.show_error(
-            "library.jsonが破損しています。データを空として読み込みます。"
-        )
-        return []  # データが壊れている場合、空のリストを返す
+# # ファイル読み込み(jsonを読んでbookを返す(不要))
+# def load_library_from_file(filename="library.json"):
+#     # ユーザーのホームディレクトリを取得
+#     home_directory = os.path.expanduser("~")
+#     # 'Documents/Shelf/'ディレクトリに結合してフルパスを作成
+#     library_dir = os.path.join(home_directory, "Documents", "Shelf")
+#     library_path = os.path.join(library_dir, filename)
+#     # 例外処理
+#     ## 'Documents/Shelf' ディレクトリが存在しない場合、作成する
+#     if not os.path.exists(library_dir):
+#         os.makedirs(library_dir)
+#     ## 'library.json' が存在しない場合、空のファイルを作成
+#     if not os.path.exists(library_path):
+#         with open(library_path, "w", encoding="utf-8") as f:
+#             json.dump([], f)  # 空のリストをJSONとして保存
+#             mainwindow.show_info("library.jsonが書類/Shelfに作成されています。")
+#     # ファイルを読み込み
+#     try:
+#         with open(library_path, "r", encoding="utf-8") as f:
+#             books_lib = json.load(f)
+#             return [
+#                 Book.from_dict(data) for data in books_lib
+#             ]  # 辞書からBookインスタンスに変換
+#     except json.JSONDecodeError:
+#         mainwindow.show_error(
+#             "library.jsonが破損しています。データを空として読み込みます。"
+#         )
+#         return []  # データが壊れている場合、空のリストを返す
 
 
 # 削除(bookから消してファイルに保存する(要修正))
+# def remove_book(isbn):
+#     if not isbn:
+#         return
+
+#     library = load_library_from_file()
+
+#     book_to_remove = next((book for book in library if book.isbn == str(isbn)), None)
+
+#     if book_to_remove:
+#         library.remove(book_to_remove)
+#         save_library_to_file(library)
+#         mainwindow.show_info(f"ISBN: {isbn} の本は削除されました。")
+#     else:
+#         mainwindow.show_error(f"ISBN: {isbn} はライブラリに存在しません。")
+#         return
+
+
+# 本を削除
 def remove_book(isbn):
-    if not isbn:
+    conn = sqlite3.connect("books.db")
+    cursor = conn.cursor()
+    # 存在するか確認
+    select_query = "SELECT * FROM books WHERE isbn=?"
+    cursor.execute(select_query, (isbn,))
+    book = cursor.fetchone()
+    if not book:
+        mainwindow.nobook.append()
+        conn.commit()
+        conn.close()
         return
-
-    library = load_library_from_file()
-
-    book_to_remove = next((book for book in library if book.isbn == str(isbn)), None)
-
-    if book_to_remove:
-        library.remove(book_to_remove)
-        save_library_to_file(library)
-        mainwindow.show_info(f"ISBN: {isbn} の本は削除されました。")
-    else:
-        mainwindow.show_error(f"ISBN: {isbn} はライブラリに存在しません。")
-        return
+    # 存在すれば削除
+    delete_query = "DELETE FROM books WHERE isbn=?"
+    cursor.execute(delete_query, (isbn,))
+    conn.commit()
+    conn.close()
+    mainwindow.removed.append(isbn)
 
 
 # 追加(api叩き、bookインスタンス作成し、libraryに追加)
 def addlibrary(isbn):
     if not isbn:
         return
-
-    library = load_library_from_file()
-    # 重複回避
-    if any(book.isbn == str(isbn) for book in library):
-        mainwindow.already.append(isbn)
-        return
-
-    bookdata = getdata(isbn)
-    book = create_book_from_data(isbn, bookdata)
-    if book:
-        library.append(book)
-        save_library_to_file(library)
+    # 存在するか確認
+    conn = sqlite3.connect("books.db")
+    cursor = conn.cursor()
+    select_query = "SELECT * FROM books WHERE isbn=?"
+    cursor.execute(select_query, (isbn,))
+    book = cursor.fetchone()
+    if not book:
+        bookdata = getdata(isbn)
+        book = create_book_from_data(isbn, bookdata)
+        save_to_book_db(book)
+        conn.commit()
+        conn.close()
         mainwindow.added.append(isbn)
+        return
     else:
+        mainwindow.already.append(isbn)
+        conn.commit()
+        conn.close()
         return
 
 
@@ -296,7 +347,7 @@ class Window(QWidget):
         self.tableWidget.setSortingEnabled(True)
         loadButton = QPushButton("再読み込み")
         loadButton.setShortcut(Qt.KeyboardModifier.ControlModifier | Qt.Key_R)  # Ctrl+R
-        loadButton.clicked.connect(self.load_json)
+        loadButton.clicked.connect(self.load_db)
         # layoutに配置
         search_layout.addWidget(self.search_box)
         vertical_layout.addLayout(search_layout)
@@ -316,9 +367,11 @@ class Window(QWidget):
         self.already = []
         self.nobarcode = []
         self.noisbn = []
+        self.nobook = []
+        self.removed = []
 
     # 表を読む関数
-    def load_json(self):
+    def load_db(self):
         # 初期化
         self.tableWidget.clear()
         self.tableWidget.setRowCount(0)  # 行数をリセット
@@ -336,12 +389,29 @@ class Window(QWidget):
         )
         # ソートを一時的に無効化
         self.tableWidget.setSortingEnabled(False)
-        # json読み込み
-        library = load_library_from_file()
+        # db読み込み
+        # データベースから読み込み
+        conn = sqlite3.connect("books.db")
+        cursor = conn.cursor()
+        select_query = "SELECT * FROM books"
+        cursor.execute(select_query)
+        rows = cursor.fetchall()
+        library = [
+            Book(
+                isbn=row[0],
+                title=row[1],
+                creator=row[2],
+                publisher=row[3],
+                issued=row[4],
+                classification=row[5] if row[5] else "",
+                readed=bool(row[6]),
+            )
+            for row in rows
+        ]
         # 行数の設定
         self.tableWidget.setRowCount(len(library))
 
-        # JSONをテーブルに表示
+        # テーブルに表示
         for row, item in enumerate(library):
             self.tableWidget.setItem(row, 0, QTableWidgetItem(item.isbn))
             self.tableWidget.setItem(
@@ -404,8 +474,9 @@ class Window(QWidget):
 
         # ソートを有効化
         self.tableWidget.setSortingEnabled(True)
-
-        self.show_info("jsonファイルがリロードされました。")
+        conn.commit()
+        conn.close()
+        self.show_info("データベースファイルがリロードされました。")
 
     # OKボタン
     def add_delete(self):
@@ -414,6 +485,8 @@ class Window(QWidget):
         self.added = []
         self.nobarcode = []
         self.noisbn = []
+        self.nobook = []
+        self.removed = []
         isbn1 = self.line_edit1.text()
         if isbn1:
             try:
@@ -460,9 +533,16 @@ class Window(QWidget):
                 isbn_to_be_removed.add(
                     self.tableWidget.item(row, 0).text()
                 )  # ISBN列（1列目）の値を取得
+        for isbn in isbn_to_be_removed:
+            remove_book(isbn)
+
+        if self.nobook:
+            self.show_error(f"iSBN{self.nobook}の本は存在しないため削除できません。")
+        if self.removed:
+            self.show_info(f"iSBN{self.removed}の本は削除されました。")
 
         # 以下、全ての更新を一度に行う。
-        library = load_library_from_file()  # ライブラリの情報を一回読み込む
+        self.load_db()  # ライブラリの情報を一回読み込む
         # isbnをキーとした辞書型に変換
         bookdic = {book.isbn: book for book in library}
         # テーブル上の値を取得し、変更があるかどうか整合*全ての行繰り返す
@@ -504,12 +584,12 @@ class Window(QWidget):
             book for isbn, book in bookdic.items() if isbn not in isbn_to_be_removed
         ]
         # 保存
-        save_library_to_file(book_to_save)
+        save_to_book_db(book_to_save)
 
         self.line_edit1.clear()
         self.line_edit2.clear()
 
-        self.load_json()
+        self.load_db()
 
     # 画像ファイルから追加ボタンで呼ばれる
     def choose_folder(self):
@@ -555,7 +635,7 @@ class Window(QWidget):
             )
         if self.nobarcode:
             self.show_info(f"{self.nobarcode}内に、バーコードを認識できませんでした。")
-        self.load_json()
+        self.load_db()
 
     # 検索関数
     def search_table(self):

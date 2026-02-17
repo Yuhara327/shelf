@@ -34,9 +34,5 @@ def createdb(filename="library.db"):
         )
     """
     cursor.execute(create_table_query)
-
-
-# コミットして変更を保存します。
-createdb()
-conn.commit()
-conn.close()
+    conn.commit()
+    conn.close()
