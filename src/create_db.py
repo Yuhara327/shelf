@@ -14,11 +14,9 @@ def createdb(filename="library.db"):
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
 
     # データベースに接続します。
-    global conn
     conn = sqlite3.connect(db_path)
 
     # カーソルオブジェクトを作成します。
-    global cursor
     cursor = conn.cursor()
 
     # テーブルを作成します。

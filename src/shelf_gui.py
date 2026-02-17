@@ -28,13 +28,18 @@ from pillow_heif import register_heif_opener
 import asyncio
 import sqlite3
 from create_db import createdb
-
-# SQLiteデータベースがあるかどうか。なければ作成
-createdb()
-
 # PILにHEICサポートを追加
 register_heif_opener()
 
+
+# SQLiteデータベースがあるかどうか。なければ作成
+createdb()
+# データベースファイルの完全パスを指定します。
+# ユーザーのホームディレクトリを取得
+home_directory = os.path.expanduser("~")
+# 'Documents/Shelf/'ディレクトリに結合してフルパスを作成
+library_dir = os.path.join(home_directory, "Documents", "Shelf")
+db_path = os.path.join(library_dir, "library.db")
 
 # APIを叩いて文字列を返す
 def getdata(isbn):
@@ -111,7 +116,12 @@ def create_book_from_data(isbn, bookdata):
     title1 = item.get("dc:title")
     title2 = item.get("dcndl:volume", "")
     title = f"{title1} {title2}"
+    # creator がリスト型の場合、カンマ区切りの文字列に変換
     creator = item.get("dc:creator")
+    if isinstance(creator, list):
+        creator = ", ".join(creator)
+    else:
+        creator = creator
     company = item.get("dc:publisher")
     series = item.get("dcndl:seriesTitle", "")
     publisher = f"{company}, {series}"
@@ -123,12 +133,15 @@ def create_book_from_data(isbn, bookdata):
 
 # データベースに本を保存
 def save_to_book_db(books):
-    conn = sqlite3.connect("books.db")
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     insert_query = """
         INSERT OR REPLACE INTO books (isbn, title, creator, publisher, issued, classification, readed)
         VALUES ( ?, ?, ?, ?, ?, ?, ?)
     """
+    if isinstance(books, Book):  # 単一のBookオブジェクトの場合
+        books = [books]  # リストに変換
+    
     for book in books:
         cursor.execute(
             insert_query,
@@ -170,34 +183,30 @@ def save_to_book_db(books):
 #         )  # Bookインスタンスから辞書に変換して保存
 
 
-# # ファイル読み込み(jsonを読んでbookを返す(不要))
-# def load_library_from_file(filename="library.json"):
-#     # ユーザーのホームディレクトリを取得
-#     home_directory = os.path.expanduser("~")
-#     # 'Documents/Shelf/'ディレクトリに結合してフルパスを作成
-#     library_dir = os.path.join(home_directory, "Documents", "Shelf")
-#     library_path = os.path.join(library_dir, filename)
-#     # 例外処理
-#     ## 'Documents/Shelf' ディレクトリが存在しない場合、作成する
-#     if not os.path.exists(library_dir):
-#         os.makedirs(library_dir)
-#     ## 'library.json' が存在しない場合、空のファイルを作成
-#     if not os.path.exists(library_path):
-#         with open(library_path, "w", encoding="utf-8") as f:
-#             json.dump([], f)  # 空のリストをJSONとして保存
-#             mainwindow.show_info("library.jsonが書類/Shelfに作成されています。")
-#     # ファイルを読み込み
-#     try:
-#         with open(library_path, "r", encoding="utf-8") as f:
-#             books_lib = json.load(f)
-#             return [
-#                 Book.from_dict(data) for data in books_lib
-#             ]  # 辞書からBookインスタンスに変換
-#     except json.JSONDecodeError:
-#         mainwindow.show_error(
-#             "library.jsonが破損しています。データを空として読み込みます。"
-#         )
-#         return []  # データが壊れている場合、空のリストを返す
+# ファイル読み込み(jsonを読んでbookを返す(不要なんだけどmigrateに必要))
+def load_library_from_json(filename="library.json"):
+    # ユーザーのホームディレクトリを取得
+    home_directory = os.path.expanduser("~")
+    # 'Documents/Shelf/'ディレクトリに結合してフルパスを作成
+    library_dir = os.path.join(home_directory, "Documents", "Shelf")
+    library_path = os.path.join(library_dir, filename)
+    try:
+        with open(library_path, "r", encoding="utf-8") as f:
+            books_lib = json.load(f)
+            return [
+                Book(
+                    isbn=data["isbn"],
+                    title=data["title"],
+                    creator=data["creator"],
+                    publisher=data["publisher"],
+                    issued=data["issued"],
+                    classification=data.get("classification"),  # classificationはオプション
+                    readed=data.get("readed"),
+                )
+                for data in books_lib
+            ]  # 辞書からBookインスタンスに変換
+    except json.JSONDecodeError:
+        raise ValueError("library.jsonが破損しています。データを空として読み込みます。")
 
 
 # 削除(bookから消してファイルに保存する(要修正))
@@ -218,9 +227,9 @@ def save_to_book_db(books):
 #         return
 
 
-# 本を削除
+# 本を削除(isbnを受け取って)
 def remove_book(isbn):
-    conn = sqlite3.connect("books.db")
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     # 存在するか確認
     select_query = "SELECT * FROM books WHERE isbn=?"
@@ -239,12 +248,12 @@ def remove_book(isbn):
     mainwindow.removed.append(isbn)
 
 
-# 追加(api叩き、bookインスタンス作成し、libraryに追加)
+# 追加(isbnを受け取ってapi叩き、bookインスタンス作成し、libraryに追加)
 def addlibrary(isbn):
     if not isbn:
         return
     # 存在するか確認
-    conn = sqlite3.connect("books.db")
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     select_query = "SELECT * FROM books WHERE isbn=?"
     cursor.execute(select_query, (isbn,))
@@ -391,7 +400,7 @@ class Window(QWidget):
         self.tableWidget.setSortingEnabled(False)
         # db読み込み
         # データベースから読み込み
-        conn = sqlite3.connect("books.db")
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         select_query = "SELECT * FROM books"
         cursor.execute(select_query)
@@ -533,6 +542,7 @@ class Window(QWidget):
                 isbn_to_be_removed.add(
                     self.tableWidget.item(row, 0).text()
                 )  # ISBN列（1列目）の値を取得
+        # 削除処理
         for isbn in isbn_to_be_removed:
             remove_book(isbn)
 
@@ -541,55 +551,101 @@ class Window(QWidget):
         if self.removed:
             self.show_info(f"iSBN{self.removed}の本は削除されました。")
 
-        # 以下、全ての更新を一度に行う。
-        self.load_db()  # ライブラリの情報を一回読み込む
-        # isbnをキーとした辞書型に変換
-        bookdic = {book.isbn: book for book in library}
-        # テーブル上の値を取得し、変更があるかどうか整合*全ての行繰り返す
+        # テーブル内の変更を検出する
         for row in range(self.tableWidget.rowCount()):
-            isbn = self.tableWidget.item(row, 0).text()  # ISBN（1列目）の値を取得
-            title = self.tableWidget.item(row, 1).text()  # Title（2列目）の値を取得
-            creator = self.tableWidget.item(row, 2).text()  # Creator（3列目）の値を取得
-            publisher = self.tableWidget.item(
-                row, 3
-            ).text()  # Publisher（4列目）の値を取得
-            issued = self.tableWidget.item(row, 4).text()  # Issued（5列目）の値を取得
-            classification = self.tableWidget.item(
-                row, 5
-            ).text()  # Classification列（6列目）の値を取得
-            readed_item = self.tableWidget.item(row, 6)  # 既読チェックボックス（7列目）
+            isbn = self.tableWidget.item(row, 0).text()
+            title = self.tableWidget.item(row, 1).text()
+            creator = self.tableWidget.item(row, 2).text()
+            publisher = self.tableWidget.item(row, 3).text()
+            issued = self.tableWidget.item(row, 4).text()
+            classification = self.tableWidget.item(row, 5).text()
+            readed_item = self.tableWidget.item(row, 6)
 
-            book_to_update = bookdic.get(
-                isbn
-            )  # isbnをキーにして辞書からBookオブジェクトを取得
-            if book_to_update:  # 辞書にあるなら、(まああるんだけど)
-                # 以下、データとGUIの入力が異なるなら上書き。
-                # title ~ issuedに関しては、空文字の場合は無視する。
-                if title and book_to_update.title != title:
-                    book_to_update.title = title
-                if creator and book_to_update.creator != creator:
-                    book_to_update.creator = creator
-                if publisher and book_to_update.publisher != publisher:
-                    book_to_update.publisher = publisher
-                if issued and book_to_update.issued != issued:
-                    book_to_update.issued = issued
-                if book_to_update.classification != classification:
-                    book_to_update.classification = classification
-                isChecked = readed_item.checkState() == Qt.Checked
-                if book_to_update.readed != isChecked:
-                    book_to_update.readed = isChecked
+            # データベースから最新の情報を取得
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            select_query = "SELECT * FROM books WHERE isbn = ?"
+            cursor.execute(select_query, (isbn,))
+            book = cursor.fetchone()
+            if not book:
+                continue
 
-        # (さっきデータを辞書に格納→classification と readed を更新したので、その中から、)削除対象以外の本を保存
-        book_to_save = [
-            book for isbn, book in bookdic.items() if isbn not in isbn_to_be_removed
-        ]
-        # 保存
-        save_to_book_db(book_to_save)
+            # 変更を検出する
+            if (
+                title != book[1]
+                or creator != book[2]
+                or publisher != book[3]
+                or issued != book[4]
+                or classification != book[5]
+                or (readed_item.checkState() == Qt.Checked) != book[6]
+            ):
+                # 更新する
+                update_query = """
+                UPDATE books SET title=?, creator=?, publisher=?, issued=?, classification=?, readed=? WHERE isbn=?
+                """
+                cursor.execute(
+                    update_query,
+                    (
+                        title,
+                        creator,
+                        publisher,
+                        issued,
+                        classification,
+                        int(readed_item.checkState() == Qt.Checked),
+                        isbn
+                    )
+                )
+            conn.commit()
+            conn.close()
 
         self.line_edit1.clear()
         self.line_edit2.clear()
 
         self.load_db()
+        # # 以下、全ての更新を一度に行う。
+        # self.load_db()  # ライブラリの情報を一回読み込む
+        # # isbnをキーとした辞書型に変換
+        # bookdic = {book.isbn: book for book in library}
+        # # テーブル上の値を取得し、変更があるかどうか整合*全ての行繰り返す
+        # for row in range(self.tableWidget.rowCount()):
+        #     isbn = self.tableWidget.item(row, 0).text()  # ISBN（1列目）の値を取得
+        #     title = self.tableWidget.item(row, 1).text()  # Title（2列目）の値を取得
+        #     creator = self.tableWidget.item(row, 2).text()  # Creator（3列目）の値を取得
+        #     publisher = self.tableWidget.item(
+        #         row, 3
+        #     ).text()  # Publisher（4列目）の値を取得
+        #     issued = self.tableWidget.item(row, 4).text()  # Issued（5列目）の値を取得
+        #     classification = self.tableWidget.item(
+        #         row, 5
+        #     ).text()  # Classification列（6列目）の値を取得
+        #     readed_item = self.tableWidget.item(row, 6)  # 既読チェックボックス（7列目）
+
+        #     book_to_update = bookdic.get(
+        #         isbn
+        #     )  # isbnをキーにして辞書からBookオブジェクトを取得
+        #     if book_to_update:  # 辞書にあるなら、(まああるんだけど)
+        #         # 以下、データとGUIの入力が異なるなら上書き。
+        #         # title ~ issuedに関しては、空文字の場合は無視する。
+        #         if title and book_to_update.title != title:
+        #             book_to_update.title = title
+        #         if creator and book_to_update.creator != creator:
+        #             book_to_update.creator = creator
+        #         if publisher and book_to_update.publisher != publisher:
+        #             book_to_update.publisher = publisher
+        #         if issued and book_to_update.issued != issued:
+        #             book_to_update.issued = issued
+        #         if book_to_update.classification != classification:
+        #             book_to_update.classification = classification
+        #         isChecked = readed_item.checkState() == Qt.Checked
+        #         if book_to_update.readed != isChecked:
+        #             book_to_update.readed = isChecked
+
+        # # (さっきデータを辞書に格納→classification と readed を更新したので、その中から、)削除対象以外の本を保存
+        # book_to_save = [
+        #     book for isbn, book in bookdic.items() if isbn not in isbn_to_be_removed
+        # ]
+        # # 保存
+        # save_to_book_db(book_to_save)
 
     # 画像ファイルから追加ボタンで呼ばれる
     def choose_folder(self):
