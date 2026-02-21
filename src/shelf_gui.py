@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QHBoxLayout,
     QWidgetAction,
+    QMainWindow
 )
 from PySide6.QtCore import Qt, Slot
 import sys
@@ -314,15 +315,17 @@ async def read_barcode(image_path):
 
 
 # GUI
-class Window(QWidget):
+class Window(QMainWindow):
     def __init__(self):
         self.info_msg = None
         # ウィンドウの設定
         super().__init__()
         self.setWindowTitle("Shelf")
         self.setGeometry(100, 100, 1300, 900)
+        central_widget = QWidget()
         vertical_layout = QVBoxLayout()
-        self.setLayout(vertical_layout)
+        central_widget.setLayout(vertical_layout)
+        self.setCentralWidget(central_widget)
         # widgetsの用意
         self.line_edit1 = QLineEdit(self, placeholderText="追加する本のISBNコード")
         self.line_edit2 = QLineEdit(self, placeholderText="削除する本のISBNコード")
@@ -729,6 +732,9 @@ class Window(QWidget):
 
 # 表示
 qAp = QApplication(sys.argv)
+with open('src/styles.qss', 'r') as f:
+    qss = f.read()
 mainwindow = Window()
+mainwindow.setStyleSheet(qss)  # QSSをmainwindowに適用
 mainwindow.show()
 qAp.exec()

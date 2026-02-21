@@ -1,0 +1,4 @@
+/* 全体的なスタイル */
+QMainWindow {
+    background-color: #F5F6F8; /* 背景色 */
+}
