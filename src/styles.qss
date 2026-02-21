@@ -1,4 +1,93 @@
 /* 全体的なスタイル */
 QMainWindow {
-    background-color: #F5F6F8; /* 背景色 */
+    background-color: #FBFBFB; /* 背景色 */
+}
+
+/* QLineEdit のスタイル */
+QLineEdit {
+    border: 1px solid;
+    border-color: #D9D8DB;
+    border-radius: 7px;
+    background-color: #E8E8EA;
+    padding: 10px;
+}
+
+/* QTableWidget のスタイル */
+QTableWidget {
+    background-color: #F3F3F4; /* 背景色 */
+    border: 1px solid;
+    border-color: #D9D8DB;
+    border-radius: 7px;
+}
+
+QTableWidget::item {
+    background: #F3F3F4; /* セルの背景色 */
+}
+
+QTableWidget::item:selected {
+    background: #DEDEE1; /* 選択されたセルの背景色 */
+    color: black;
+}
+
+/* QHeaderView のスタイル */
+QHeaderView::section {
+    background-color: #E8E8EA; /* ヘッダーの背景色 */
+    border-top: 0px solid #D9D8DB;
+    padding: 5px;
+}
+
+QHeaderView::section:first {
+    border-top: none; /* 最初のヘッダーに上部ボーダーを無効にする（オプション） */
+}
+
+QHeaderView::section:last {
+    border-bottom: 1px solid #D9D8DB; /* 最後のヘッダーに下部ボーダーを適用する */
+}
+
+QHeaderView::section:horizontal {
+    color: #6A6B74;/* 水平ヘッダー（列名）の文字色を青に設定 */
+    font-weight: bold; /* ヘッダーの文字が太字になる */
+}
+
+/* 基本状態 (Normal State) */
+QPushButton {
+    background-color: #E8E8EA;
+    border: none;              /* OSネイティブの立体的な境界線を完全に破棄 */
+    border-radius: 7px;        /* 視覚的な柔らかさを与える角丸 */
+    padding: 10px;         /* クリック可能な領域（タッチターゲット）を確保 */
+    font-size: 14px;
+    font-weight: bold;
+    outline: none;             /* フォーカス時の点線を非表示にする（macOS等で有効） */
+}
+
+/* ホバー状態 (Hover State) : マウスカーソルが重なった時 */
+QPushButton:hover {
+    background-color: #DEDEE1; /* 基本色より明度を下げ、インタラクション可能であることを提示 */
+}
+
+/* 押下状態 (Pressed State) : クリックされている瞬間 */
+QPushButton:pressed {
+    background-color: #DEDEE1; /* さらに明度を下げる */
+    padding-top: 10px;         /* 上部パディングを増やし、下部を減らすことで */
+    padding-bottom: 6px;       /* 物理的なボタンが押し込まれたような錯覚（沈み込み）を実装 */
+}
+
+/* 無効化状態 (Disabled State) : setEnabled(False) 適用時 */
+QPushButton:disabled {
+    background-color: #E0E0E0;
+    color: #A0A0A0;
+    border: 1px solid #CCCCCC;
+}
+
+QPushButton#saveButton {
+background-color: #007ACC;
+color: #FFFFFF;
+}
+QPushButton#saveButton:hover {
+background-color: #0065a9;
+}
+QPushButton#saveButton:pressed {
+background-color: #005085;
+padding-top: 10px;
+padding-bottom: 6px;
 }

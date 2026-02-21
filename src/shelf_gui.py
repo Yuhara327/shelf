@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QHBoxLayout,
     QWidgetAction,
-    QMainWindow
+    QMainWindow,
 )
 from PySide6.QtCore import Qt, Slot
 import sys
@@ -331,18 +331,19 @@ class Window(QMainWindow):
         self.line_edit2 = QLineEdit(self, placeholderText="削除する本のISBNコード")
         self.label1 = QLabel("追加")
         self.label2 = QLabel("削除")
-        self.button = QPushButton("保存(変更後、必ず押してください！)")
+        self.button = QPushButton("変更を適用(⌘S)")
         self.button.setDefault(True)
         self.button.setShortcut(
             Qt.KeyboardModifier.ControlModifier | Qt.Key_S
         )  # Ctrl+S
         self.button.clicked.connect(self.add_delete)
+        self.button.setObjectName("saveButton")
         self.line_edit1.returnPressed.connect(self.button.click)
         self.line_edit2.returnPressed.connect(self.button.click)
         self.filebutton = QPushButton("バーコードの画像ファイルから追加")
         self.filebutton.clicked.connect(self.choose_folder)
         self.search_box = QLineEdit(self)
-        self.search_box.setPlaceholderText("検索")
+        self.search_box.setPlaceholderText("検索(⌘F)")
         self.search_box.textChanged.connect(self.search_table)
         self.search_box.setFixedWidth(300)  # 検索ボックスの幅を固定（適度なサイズ)
         # QActionを作成してショートカットを設定
@@ -357,9 +358,10 @@ class Window(QMainWindow):
         self.tableWidget = QTableWidget()
         self.tableWidget.setColumnCount(8)  # 列数の設定
         self.tableWidget.setSortingEnabled(True)
-        loadButton = QPushButton("再読み込み")
+        loadButton = QPushButton("再読み込み(⌘R)")
         loadButton.setShortcut(Qt.KeyboardModifier.ControlModifier | Qt.Key_R)  # Ctrl+R
         loadButton.clicked.connect(self.load_db)
+        self.tableWidget.verticalHeader().setVisible(False)
         # layoutに配置
         search_layout.addWidget(self.search_box)
         vertical_layout.addLayout(search_layout)
@@ -371,8 +373,9 @@ class Window(QMainWindow):
         sublayout.addWidget(self.label2, 0, 2)
         sublayout.addWidget(self.line_edit2, 0, 3)
         vertical_layout.addLayout(sublayout)
-        vertical_layout.addWidget(self.button)
         vertical_layout.addWidget(self.filebutton)
+        vertical_layout.addWidget(self.button)
+
 
         self.added = []
         self.apierror = []
@@ -390,13 +393,13 @@ class Window(QMainWindow):
         self.tableWidget.setHorizontalHeaderLabels(
             [
                 "ISBN",
-                "Title",
-                "Creator",
-                "Publisher",
-                "Issued",
-                "Classification",
-                "Readed",
-                "Delete",
+                "タイトル",
+                "著者",
+                "出版社",
+                "出版年月",
+                "分類番号",
+                "既読",
+                "削除",
             ]
         )
         # ソートを一時的に無効化
@@ -473,16 +476,17 @@ class Window(QMainWindow):
             checkbox = QCheckBox()
             self.tableWidget.setCellWidget(row, 7, checkbox)
 
+
         # 列幅指定
         # 列の幅を設定 (例えば、列ごとに幅を指定)
         self.tableWidget.setColumnWidth(0, 150)  # ISBN列の幅を150に設定
         self.tableWidget.setColumnWidth(1, 300)  # Title列の幅を200に設定
         self.tableWidget.setColumnWidth(2, 150)  # Creator列の幅を150に設定
-        self.tableWidget.setColumnWidth(3, 300)  # Publisher列の幅を150に設定
+        self.tableWidget.setColumnWidth(3, 354)  # Publisher列の幅を150に設定
         self.tableWidget.setColumnWidth(4, 100)  # Issued列の幅を120に設定
         self.tableWidget.setColumnWidth(5, 100)
-        self.tableWidget.setColumnWidth(6, 50)
-        self.tableWidget.setColumnWidth(7, 42)
+        self.tableWidget.setColumnWidth(6, 60)
+        self.tableWidget.setColumnWidth(7, 60)
 
         # ソートを有効化
         self.tableWidget.setSortingEnabled(True)
