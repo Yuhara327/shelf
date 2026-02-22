@@ -1,7 +1,7 @@
 import sqlite3
 import sys
 import os
-from shelf_gui import Book, load_library_from_json
+from shelf import Book, load_library_from_json
 
 def createdb(filename="library.db"):
     # ユーザーのホームディレクトリを取得
