@@ -91,3 +91,31 @@ background-color: #005085;
 padding-top: 10px;
 padding-bottom: 6px;
 }
+
+QLabel {
+    font-size: 14px;
+    font-weight: bold;
+    
+}
+
+QLabel#datacount {
+    font-size: 15px;
+    font-weight: bold;
+    color : #1D9669;
+    border: 1px solid;
+    border-color: #1D9669;
+    border-radius: 7px;
+    background-color: #D1FAE5;
+    padding: 10px 30px;
+    
+}
+QLabel#readcount {
+    font-size: 14px;
+    font-weight: bold;
+    border: 1px solid;
+    border-color: #007ACC;
+    border-radius: 7px;
+    padding: 10px 30px;
+    background-color: #d3edff;
+    color: #007ACC;
+}

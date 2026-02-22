@@ -29,6 +29,7 @@ from pillow_heif import register_heif_opener
 import asyncio
 import sqlite3
 from create_db import createdb
+
 # PILにHEICサポートを追加
 register_heif_opener()
 
@@ -352,8 +353,6 @@ class Window(QMainWindow):
         focus_action.triggered.connect(self.focus_search_box)
         # ショートカットをウィンドウ全体で有効にする
         self.addAction(focus_action)
-        search_layout = QHBoxLayout()
-        search_layout.addStretch()  # 左側に余白を確保
         ## 表の作成
         self.tableWidget = QTableWidget()
         self.tableWidget.setColumnCount(8)  # 列数の設定
@@ -362,8 +361,18 @@ class Window(QMainWindow):
         loadButton.setShortcut(Qt.KeyboardModifier.ControlModifier | Qt.Key_R)  # Ctrl+R
         loadButton.clicked.connect(self.load_db)
         self.tableWidget.verticalHeader().setVisible(False)
-        # layoutに配置
+        # 蔵書数・既読数ラベルの追加
+        self.label_data_count = QLabel("蔵書数: 0", self)
+        self.label_read_count = QLabel("既読数: 0", self)
+        self.label_data_count.setObjectName("datacount")
+        self.label_read_count.setObjectName("readcount")
+        # 検索ボックスとラベルの配置
+        search_layout = QHBoxLayout()
+        search_layout.addWidget(self.label_data_count)
+        search_layout.addWidget(self.label_read_count)
+        search_layout.addStretch()
         search_layout.addWidget(self.search_box)
+        # layoutに配置
         vertical_layout.addLayout(search_layout)
         vertical_layout.addWidget(self.tableWidget)
         vertical_layout.addWidget(loadButton)
@@ -424,7 +433,9 @@ class Window(QMainWindow):
             for row in rows
         ]
         # 行数の設定
-        self.tableWidget.setRowCount(len(library))
+        data_count = len(library)
+        self.label_data_count.setText(f"蔵書数: {data_count}")
+        self.tableWidget.setRowCount(data_count)
 
         # テーブルに表示
         for row, item in enumerate(library):
@@ -487,6 +498,13 @@ class Window(QMainWindow):
         self.tableWidget.setColumnWidth(5, 100)
         self.tableWidget.setColumnWidth(6, 60)
         self.tableWidget.setColumnWidth(7, 60)
+
+        # 既読数をカウント
+        read_count = sum(
+            1 for row in range(self.tableWidget.rowCount())
+            if self.tableWidget.item(row, 6).checkState() == Qt.Checked
+        )
+        self.label_read_count.setText(f"既読数: {read_count}")
 
         # ソートを有効化
         self.tableWidget.setSortingEnabled(True)
