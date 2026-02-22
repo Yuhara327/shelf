@@ -754,8 +754,19 @@ class Window(QMainWindow):
 
 # 表示
 qAp = QApplication(sys.argv)
-with open('src/styles.qss', 'r') as f:
+
+# Get the directory of the running script/executable
+application_path = os.path.dirname(os.path.abspath(sys.argv[0]))
+qss_path = os.path.join(application_path, 'styles.qss')
+
+# Nuitkaでビルドした場合、styles.qssは実行ファイルと同じ階層に配置されるため、
+# もし開発時(直接.pyを実行)のようにファイルが見つからない場合は、元のパスも試す
+if not os.path.exists(qss_path):
+    qss_path = 'src/styles.qss'
+
+with open(qss_path, 'r') as f:
     qss = f.read()
+    
 mainwindow = Window()
 mainwindow.setStyleSheet(qss)  # QSSをmainwindowに適用
 mainwindow.show()
