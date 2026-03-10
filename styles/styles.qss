@@ -10,6 +10,7 @@ QLineEdit {
     border-radius: 7px;
     background-color: #E8E8EA;
     padding: 10px;
+    color : black;
 }
 
 /* QTableWidget のスタイル */
@@ -18,10 +19,13 @@ QTableWidget {
     border: 1px solid;
     border-color: #D9D8DB;
     border-radius: 7px;
+    color : black;
+
 }
 
 QTableWidget::item {
     background: #F3F3F4; /* セルの背景色 */
+    color : black;
 }
 
 QTableWidget::item:selected {
@@ -34,6 +38,7 @@ QHeaderView::section {
     background-color: #E8E8EA; /* ヘッダーの背景色 */
     border-top: 0px solid #D9D8DB;
     padding: 5px;
+    color : black;
 }
 
 QHeaderView::section:first {
@@ -58,6 +63,7 @@ QPushButton {
     font-size: 14px;
     font-weight: bold;
     outline: none;             /* フォーカス時の点線を非表示にする（macOS等で有効） */
+    color : black;
 }
 
 /* ホバー状態 (Hover State) : マウスカーソルが重なった時 */

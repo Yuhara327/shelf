@@ -1,14 +1,9 @@
 import sqlite3
 import os
+from src.models import db_path
 
 
 def createdb(filename="library.db"):
-    # データベースファイルの完全パスを指定します。
-    # ユーザーのホームディレクトリを取得
-    home_directory = os.path.expanduser("~")
-    # 'Documents/Shelf/'ディレクトリに結合してフルパスを作成
-    library_dir = os.path.join(home_directory, "Documents", "Shelf")
-    db_path = os.path.join(library_dir, filename)
 
     # ディレクトリが存在しない場合は作成します。
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
