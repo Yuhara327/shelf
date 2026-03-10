@@ -52,11 +52,9 @@ def getdata(isbn):
         bookdata = xmltodict.parse(urlopen.read().decode("utf-8"))
         return bookdata
     except urllib.error.URLError as e:
-        mainwindow.show_error(f"データ取得中に接続エラーが発生しました: {str(e)}")
-        return
+        raise Exception(f"データ取得中に接続エラーが発生しました: {str(e)}")
     except Exception as e:
-        mainwindow.show_error(f"予期しないエラーが発生しました1: {str(e)}")
-        return
+        raise Exception(f"予期しないエラーが発生しました1: {str(e)}")
 
 
 # Bookクラス
@@ -107,8 +105,7 @@ def create_book_from_data(isbn, bookdata):
     items = bookdata.get("rss", {}).get("channel", {}).get("item", [])
     # apiが何も返さなかったら、データがないことを示した上で、isbnのみのデータを作成。
     if not items:
-        mainwindow.apierror.append(isbn)
-        return Book(isbn, "", "", "", "")
+        return Book(isbn, "", "", "", ""), "API_NOT_FOUND"
 
     # itemがリストの場合、最初のエントリを使用
     if isinstance(items, list):
@@ -130,7 +127,7 @@ def create_book_from_data(isbn, bookdata):
     issued = item.get("dcterms:issued")
 
     # Bookインスタンスを生成
-    return Book(isbn, title, creator, publisher, issued)
+    return Book(isbn, title, creator, publisher, issued), "SUCCESS"
 
 
 # データベースに本を保存
@@ -238,16 +235,14 @@ def remove_book(isbn):
     cursor.execute(select_query, (isbn,))
     book = cursor.fetchone()
     if not book:
-        mainwindow.nobook.append()
-        conn.commit()
         conn.close()
-        return
+        return "NOT_EXIST"
     # 存在すれば削除
     delete_query = "DELETE FROM books WHERE isbn=?"
     cursor.execute(delete_query, (isbn,))
     conn.commit()
     conn.close()
-    mainwindow.removed.append(isbn)
+    return "DELETE_SUCCEED"
 
 
 # 追加(isbnを受け取ってapi叩き、bookインスタンス作成し、libraryに追加)
@@ -262,17 +257,17 @@ def addlibrary(isbn):
     book = cursor.fetchone()
     if not book:
         bookdata = getdata(isbn)
-        book = create_book_from_data(isbn, bookdata)
-        save_to_book_db(book)
+        book_obj, status = create_book_from_data(isbn, bookdata)
+        save_to_book_db(book_obj)
         conn.commit()
         conn.close()
-        mainwindow.added.append(isbn)
-        return
+        if status == "API_NOT_FOUND":
+            return "ADD_BUT_NO_DATA"
+        return "ADD_SUCCEED"
     else:
-        mainwindow.already.append(isbn)
         conn.commit()
         conn.close()
-        return
+        return "ALREADY_EXIST"
 
 
 # 画像のリサイズとデコード
@@ -288,12 +283,12 @@ async def process_image(image_path):
 # バーコードからisbnを取得するぞ
 async def read_barcode(image_path):
     img = await process_image(image_path)
+    file_name = os.path.basename(image_path)
     # でこーど
     barcodes = decode(img)
 
     if not barcodes:
-        mainwindow.nobarcode.append(os.path.basename(image_path))
-        return None
+        return "NOT_BARCODES" , file_name
 
     for barcode in barcodes:
         # データ取得
@@ -304,15 +299,14 @@ async def read_barcode(image_path):
             and barcode_data.isdigit()
             and barcode_data.startswith("97")
         ):
-            return barcode_data  # ISBN13が見つかれば返す
+            return "SUCCESS", barcode_data  # ISBN13が見つかれば返す
         if len(barcode_data) == 10 and (
             barcode_data[:-1].isdigit()
             and (barcode_data[-1].isdigit() or barcode_data[-1] == "X")
         ):
-            return barcode_data  # ISBN10が見つかれば返す
+            return "SUCCESS", barcode_data  # ISBN10が見つかれば返す
 
-    mainwindow.noisbn.append(os.path.basename(image_path))
-    return None  # どれも一致しなければNoneを返す
+    return "ISBN_NOT_FOUND", file_name
 
 
 # GUI
@@ -384,15 +378,6 @@ class Window(QMainWindow):
         vertical_layout.addLayout(sublayout)
         vertical_layout.addWidget(self.filebutton)
         vertical_layout.addWidget(self.button)
-
-
-        self.added = []
-        self.apierror = []
-        self.already = []
-        self.nobarcode = []
-        self.noisbn = []
-        self.nobook = []
-        self.removed = []
 
     # 表を読む関数
     def load_db(self):
@@ -525,27 +510,19 @@ class Window(QMainWindow):
         if isbn1:
             try:
                 isbn1 = int(isbn1)
-                addlibrary(isbn1)
+                result = addlibrary(isbn1)
+                if result == "ADD_SUCCEED":
+                    self.show_info(f"ISBN「{isbn1}」 の本が追加されました。")
+                if result == "ADD_BUT_NO_DATA":
+                    self.show_error(
+                        f"ISBN「{isbn1}」の本は、国会図書館APIにデータが存在しませんでした。空のデータを作成しました。"
+                    )
+                if result == "ALREADY_EXIST":
+                    self.show_error(f"ISBN「{isbn1}」の本は、すでに登録されています。")
             except ValueError:
                 self.show_error("入力欄には整数を入力してください。")
             except Exception as e:
-                self.show_error(f"予期しないエラーが発生しました2: {str(e)}")
-            if self.added:
-                self.show_info(f"ISBN{self.added} の本が追加されました。")
-            if self.apierror:
-                self.show_error(
-                    f"ISBN{self.apierror}の本は、国会図書館APIにデータが存在しませんでした。"
-                )
-            if self.already:
-                self.show_error(f"ISBN{self.already}の本は、すでに登録されています。")
-            if self.noisbn:
-                self.show_info(
-                    f"{self.noisbn}内のバーコードは、ISBNと認識できませんでした。"
-                )
-            if self.nobarcode:
-                self.show_info(
-                    f"{self.nobarcode}内に、バーコードを認識できませんでした。"
-                )
+                self.show_error(f"エラーが発生しました。{str(e)}")
         # 削除対象のISBNを収集するリスト
         isbn_to_be_removed = set()
         # ユーザー入力により削除する本をリストに追加
@@ -569,12 +546,11 @@ class Window(QMainWindow):
                 )  # ISBN列（1列目）の値を取得
         # 削除処理
         for isbn in isbn_to_be_removed:
-            remove_book(isbn)
-
-        if self.nobook:
-            self.show_error(f"iSBN{self.nobook}の本は存在しないため削除できません。")
-        if self.removed:
-            self.show_info(f"iSBN{self.removed}の本は削除されました。")
+            result = remove_book(isbn)
+            if result == "NOT_EXIST":
+                self.show_error(f"ISBN「{isbn}」の本は存在しないため削除できません。")
+            if result == "DELETE_SUCCEED":
+                self.show_info(f"ISBN「{isbn}」の本は削除されました。")
 
         # テーブル内の変更を検出する
         for row in range(self.tableWidget.rowCount()):
@@ -686,38 +662,60 @@ class Window(QMainWindow):
             for filename in os.listdir(path)
             if filename.lower().endswith(supported_formats)
         ]
-        # ThreadPoolExecutorを使って並列処理
-        with ThreadPoolExecutor(
-            max_workers=os.cpu_count()
-        ) as executor:  # スレッド数は調整可能
-            loop = asyncio.get_event_loop()
-            results = loop.run_until_complete(
-                asyncio.gather(
-                    *[read_barcode(image_path) for image_path in image_files]
-                )
-            )
-        for isbn in results:
-            if isbn:
-                try:
-                    addlibrary(isbn)
-                except ValueError as e:
-                    self.show_error(e)
-        if self.added:
-            self.show_info(f"ISBN{self.added} の本が追加されました。")
-        if self.apierror:
-            self.show_error(
-                f"ISBN{self.apierror}の本は、国会図書館APIにデータが存在しませんでした。"
-            )
-        if self.already:
-            self.show_error(f"ISBN{self.already}の本は、すでに登録されています。")
-        if self.noisbn:
-            self.show_info(
-                f"{self.noisbn}内のバーコードは、ISBNと認識できませんでした。"
-            )
-        if self.nobarcode:
-            self.show_info(f"{self.nobarcode}内に、バーコードを認識できませんでした。")
-        self.load_db()
+        # 1. 非同期処理をまとめるコルーチン関数をその場で定義
+        async def run_tasks():
+            return await asyncio.gather(*[read_barcode(path) for path in image_files])
 
+        # 2. asyncio.run でそのコルーチンを確実に実行
+        results = asyncio.run(run_tasks())
+
+        added_list = []
+        apierror_list = []
+        already_list = []
+        nobarcode_list = []
+        noisbn_list = []
+
+        # read_barcodeから返されたタプル (status, value) を展開してループ処理
+        for status, value in results:
+            if status == "SUCCESS":
+                isbn = value
+                try:
+                    # Modelの追加関数を呼び出し、返却された状態を変数に格納
+                    add_result = addlibrary(isbn)
+                    
+                    # 状態に応じて適切なローカルリストへISBNを振り分け
+                    if add_result == "ADD_SUCCEED":
+                        added_list.append(isbn)
+                    elif add_result == "ADD_BUT_NO_DATA":
+                        apierror_list.append(isbn)
+                    elif add_result == "ALREADY_EXIST":
+                        already_list.append(isbn)
+                except ValueError:
+                    self.show_error("入力欄には整数を入力してください。")
+                except Exception as e:
+                    self.show_error(f"エラーが発生しました。{str(e)}")
+                    
+            elif status == "NOT_BARCODES":
+                # valueにはファイル名が格納されているため、該当のリストへ追加
+                nobarcode_list.append(value)
+                
+            elif status == "ISBN_NOT_FOUND":
+                # valueにはファイル名が格納されているため、該当のリストへ追加
+                noisbn_list.append(value)
+
+        # ループを完全に抜けた後、ローカルリストに要素が存在する場合のみ一括でGUIへ表示
+        if added_list:
+            self.show_info(f"ISBN {added_list} の本が追加されました。")
+        if apierror_list:
+            self.show_error(f"ISBN {apierror_list} は国会図書館APIにデータが存在しませんでした。空のデータを作成しました。")
+        if already_list:
+            self.show_error(f"ISBN {already_list} の本はすでに登録されています。")
+        if noisbn_list:
+            self.show_info(f"{noisbn_list} のバーコードはISBNであると認識できません。")
+        if nobarcode_list:
+            self.show_info(f"{nobarcode_list} の画像にバーコードが認識できませんでした。")
+
+        self.load_db()
     # 検索関数
     def search_table(self):
         keyword = self.search_box.text().lower()
