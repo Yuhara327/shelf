@@ -1,38 +1,37 @@
-# はじめに
-Shelfは、個人向け蔵書管理ソフトウェアです。  
-バーコードの写真から簡単に書籍のデータベースを作成し一覧できます。  
-MacOS上で動作します。  
+# Introduction
+Shelf is a personal library management software designed for macOS.  
+It enables users to construct and visualize a comprehensive book database efficiently, featuring automated entry generation from barcode images.
 
-[ダウンロード](https://www.dropbox.com/scl/fi/z5eodsae1h0umbh2l4ccd/Shelf.zip?rlkey=5i4i00m9c2nm7z19fj12cci73&st=5eahg6qd&dl=1)
+[Download](https://www.dropbox.com/scl/fi/z5eodsae1h0umbh2l4ccd/Shelf.zip?rlkey=5i4i00m9c2nm7z19fj12cci73&st=5eahg6qd&dl=1)
 
-# 利用方法
-## はじめに 
+# Usage Guide
+## Getting Started
 
-アプリを開いたら、再読み込みボタン(Command + R)を押してください。  
-初めて使う場合は、/Users/{ユーザー名}/Documents/Shelfに、library.dbファイルが作成されます。  
-書籍の情報はこのファイルに保存されます。  
-このファイルが破損した場合、ソフトウェアでデータを表示できなくなりますのでご注意ください。  
+Upon launching the application, please execute the Refresh command (**Command + R**).  
+On the initial run, a database file named `library.db` will be generated in the directory `/Users/{username}/Documents/Shelf`.  
+All bibliographic data is persisted within this file. Please exercise caution, as any corruption of this file will render the data inaccessible via the software.
 
-## 書籍の追加
+## Adding Books
 
-ISBNコードから書籍を追加する場合は、「追加する本のISBNコード」の欄にISBNコードを入力し、  
-OKボタン(command + S)を押してください。この際、ハイフンは含めないでください。  
-バーコードの画像から書籍を追加する場合は、バーコードの画像を一つのフォルダに格納してください。  
-ファイル形式は、jpg, jpeg, png, heicに対応しています。  
-Shelfで「バーコードの画像ファイルから追加」を押して、フォルダを選択してください。一括で書籍が追加されます。  
+### Via ISBN Input
+To add a book using its ISBN, enter the code into the "ISBN of the book to add" field and press the **OK** button (**Command + S**). Please ensure that hyphens are omitted during entry.
 
-## 書籍の削除
+### Via Barcode Images
+To perform a batch import using barcode images, store the relevant image files in a single folder.  
+Supported file formats: **.jpg, .jpeg, .png, .heic** In Shelf, select "Add from barcode image files" and choose the designated folder to initiate the bulk import process.
 
-ISBNコードを指定して削除する場合は、「削除する本のISBNコード」欄にISBNコードを入力し、  
-OKボタン(command + S)を押してください。  
-表の「削除」チェックボックスにチェックを入れ、OKボタンを押すと複数書籍が一括で削除可能です。  
+## Deleting Books
 
-## 分類番号
+### Via ISBN Specification
+To delete a specific entry, enter the ISBN into the "ISBN of the book to delete" field and press the **OK** button (**Command + S**).
 
-分類番号の列はユーザーが編集可能です。十進分類など、ユーザーが独自に書籍に番号を振ることができます。  
-編集後、必ずOKボタン(Command + S)を押してください。ボタンを押すことで変更が保存されます。  
+### Bulk Deletion
+You may perform bulk deletions by checking the "Delete" boxes within the data table and subsequently pressing the **OK** button.
 
-## 既読チェックボックス
+## Classification Numbers
+The "Classification Number" column is user-editable, allowing for the implementation of custom systems such as the Dewey Decimal Classification.  
+**Note:** You must press the **OK** button (**Command + S**) after editing to commit the changes to the database.
 
-既読の本にチェックを入れることができます。  
-変更後、必ずOKボタン(Command + S)を押してください。ボタンを押すことで変更が保存されます。  
+## Read Status Checkbox
+Users can manage their reading progress via the "Read" checkboxes.  
+**Note:** You must press the **OK** button (**Command + S**) after modification to ensure the updated status is persisted.
