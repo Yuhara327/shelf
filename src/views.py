@@ -98,6 +98,7 @@ class Window(QMainWindow):
         error_msg.setIcon(QMessageBox.Icon.Critical)
         error_msg.setText(message)
         error_msg.setWindowTitle("エラー")
+        error_msg.setWindowFlag(Qt.WindowStaysOnTopHint)  # 追加
         error_msg.exec()
 
     @Slot(str)
@@ -106,6 +107,7 @@ class Window(QMainWindow):
         info_msg.setIcon(QMessageBox.Icon.Information)
         info_msg.setText(message)
         info_msg.setWindowTitle("情報")
+        info_msg.setWindowFlag(Qt.WindowStaysOnTopHint)  # 追加
         info_msg.exec()
     """ここまでUIの配置"""
 

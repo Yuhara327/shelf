@@ -1,49 +1,52 @@
 /* 全体的なスタイル */
 QMainWindow {
-    background-color: #FBFBFB;
+    background-color: #1E1E1E;
     /* 背景色 */
 }
 
 /* QLineEdit のスタイル */
 QLineEdit {
-    border: 1px solid;
-    border-color: #D9D8DB;
+    border: 0px solid;
+    /*ボーダーカラー*/
+    border-color: #5E5E5E;
     border-radius: 7px;
-    background-color: #E8E8EA;
+    /*背景色の次に濃い*/
+    background-color: #3D3D3D;
     padding: 10px;
-    color: black;
+    color: white;
 }
 
 /* QTableWidget のスタイル */
 QTableWidget {
-    background-color: #F3F3F4;
+    background-color: #252526;
     /* 背景色 */
     border: 1px solid;
-    border-color: #D9D8DB;
+    border-color: #383838;
     border-radius: 7px;
-    color: black;
+    color: white;
 
 }
 
 QTableWidget::item {
-    background: #F3F3F4;
+    /*薄い*/
+    background: #484848;
     /* セルの背景色 */
-    color: black;
+    color: white;
 }
 
 QTableWidget::item:selected {
-    background: #DEDEE1;
+    background: #252526;
     /* 選択されたセルの背景色 */
-    color: black;
+    color: white;
 }
 
 /* QHeaderView のスタイル */
 QHeaderView::section {
-    background-color: #E8E8EA;
+    background-color: #252526;
     /* ヘッダーの背景色 */
-    border-top: 0px solid #D9D8DB;
+    border-top: 0px solid #5E5E5E;
     padding: 5px;
-    color: black;
+    color: white;
 }
 
 QHeaderView::section:first {
@@ -52,12 +55,12 @@ QHeaderView::section:first {
 }
 
 QHeaderView::section:last {
-    border-bottom: 1px solid #D9D8DB;
+    border-bottom: 1px solid #5E5E5E;
     /* 最後のヘッダーに下部ボーダーを適用する */
 }
 
 QHeaderView::section:horizontal {
-    color: #6A6B74;
+    color: #9197A3;
     /* 水平ヘッダー（列名）の文字色を青に設定 */
     font-weight: bold;
     /* ヘッダーの文字が太字になる */
@@ -65,8 +68,9 @@ QHeaderView::section:horizontal {
 
 /* 基本状態 (Normal State) */
 QPushButton {
-    background-color: #E8E8EA;
-    border: none;
+    background-color: #3D3D3D;
+    border: 0px solid;
+    border-color: #5E5E5E;
     /* OSネイティブの立体的な境界線を完全に破棄 */
     border-radius: 7px;
     /* 視覚的な柔らかさを与える角丸 */
@@ -76,18 +80,18 @@ QPushButton {
     font-weight: bold;
     outline: none;
     /* フォーカス時の点線を非表示にする（macOS等で有効） */
-    color: black;
+    color: white;
 }
 
 /* ホバー状態 (Hover State) : マウスカーソルが重なった時 */
 QPushButton:hover {
-    background-color: #DEDEE1;
+    background-color: #808080;
     /* 基本色より明度を下げ、インタラクション可能であることを提示 */
 }
 
 /* 押下状態 (Pressed State) : クリックされている瞬間 */
 QPushButton:pressed {
-    background-color: #DEDEE1;
+    background-color: #808080;
     /* さらに明度を下げる */
     padding-top: 10px;
     /* 上部パディングを増やし、下部を減らすことで */
@@ -97,12 +101,13 @@ QPushButton:pressed {
 
 /* 無効化状態 (Disabled State) : setEnabled(False) 適用時 */
 QPushButton:disabled {
-    background-color: #E0E0E0;
-    color: #A0A0A0;
-    border: 1px solid #CCCCCC;
+    background-color: #22262B;
+    color: #9197A3;
+    border: 10px solid #CCCCCC;
 }
 
 QPushButton#saveButton {
+    border: none;
     background-color: #007ACC;
     color: #FFFFFF;
 }
@@ -120,6 +125,7 @@ QPushButton#saveButton:pressed {
 QLabel {
     font-size: 14px;
     font-weight: bold;
+    color: white;
 
 }
 
@@ -127,7 +133,7 @@ QLabel#datacount {
     font-size: 15px;
     font-weight: bold;
     color: #1D9669;
-    border: 1px solid;
+    border: 1.5px solid;
     border-color: #1D9669;
     border-radius: 7px;
     background-color: #D1FAE5;
@@ -138,7 +144,7 @@ QLabel#datacount {
 QLabel#readcount {
     font-size: 14px;
     font-weight: bold;
-    border: 1px solid;
+    border: 1.5px solid;
     border-color: #007ACC;
     border-radius: 7px;
     padding: 10px 30px;
