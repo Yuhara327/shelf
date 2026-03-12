@@ -16,7 +16,6 @@ db_path = os.path.join(library_dir, "library.db")
 
 # APIから文字列データ(xml)を取得する。
 def getdata(isbn):
-    global bookdata
     url = f"http://iss.ndl.go.jp/api/opensearch?isbn={isbn}"
     try:
         urlopen = urllib.request.urlopen(url)

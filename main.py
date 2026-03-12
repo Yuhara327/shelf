@@ -6,7 +6,6 @@ from PySide6.QtGui import QPalette
 from src.views import Window
 from src import controller
 from create_db import createdb
-from src.views import CameraDialog
 
 def get_qss_path(app, application_path):
     """
@@ -27,39 +26,25 @@ def handle_camera_dialog(main_window):
     from src import utils, controller
     from src.views import CameraDialog
     
+    cameras = utils.list_available_cameras()
+    if not cameras:
+        main_window.show_error("カメラが見つかりません。")
+        return
+
     dialog = CameraDialog(main_window)
     dialog.load_db = main_window.load_db
     dialog.clear_camera_ui = dialog.accept
-
-    cameras = utils.list_available_cameras()
-
-
-    if not cameras:
-        main_window.show_error("使用可能なカメラが見つかりませんでした。接続を確認してください。")
-        return
-
-    # 利用可能なカメラを取得してセット
     dialog.set_camera_list(cameras)
 
-    def on_change():
-        """プルダウンが変更された時に実行される内部関数"""
-        # currentData() で、set_camera_list時に紐付けたインデックス番号を取得
-        idx = dialog.camera_selector.currentData()
-        if idx is not None:
-            controller.switch_camera(dialog, idx)
-
-    # プルダウンが変更された時の配線
-    dialog.camera_selector.currentIndexChanged.connect(on_change)
+    # 変更時は controller に丸投げ
+    dialog.camera_selector.currentIndexChanged.connect(
+        lambda: controller.switch_camera(dialog, dialog.camera_selector.currentData())
+    )
     
     dialog.finish_button.clicked.connect(lambda: controller.stop_camera_session(dialog))
     
-    # 初回の起動（最初に見つかったカメラを使用する）
-    if cameras:
-        # デフォルトの0ではなく、見つかったリストの先頭(cameras[0])を使う
-        initial_camera = cameras[0]
-        # Controller側の引数でインデックスを指定できるようにしている場合
-        controller.start_camera_session(dialog, initial_camera)
-    
+    # 初回起動
+    controller.start_camera_session(dialog, cameras[0])
     dialog.exec()
 def main():
     # SQLiteデータベースがあるかどうか。なければ作成

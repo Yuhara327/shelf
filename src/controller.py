@@ -178,20 +178,17 @@ class CameraWorker(QThread):
         self._is_running = False
 
 def start_camera_session(window, camera_index=0):
-    # 既に実行中の場合は処理しない
     if hasattr(window, "camera_worker") and window.camera_worker.isRunning():
         return
 
-    # 今回のセッションで読み取ったISBNを保持するリストをWindowオブジェクトに付与
     window.session_isbns = []
-
-    # ワーカースレッドの生成とシグナルの結線
-    window.camera_worker = CameraWorker(camera_index=0)
-    window.camera_worker.frame_ready.connect(window.update_camera_preview) # View側の描画メソッドへ
+    window.camera_worker = CameraWorker(camera_index=camera_index)
+    
+    # 結線
+    window.camera_worker.frame_ready.connect(window.update_camera_preview)
     window.camera_worker.isbns_ready.connect(lambda isbns: _handle_new_scanned_isbns(window, isbns))
     window.camera_worker.error_occurred.connect(window.show_error)
 
-    # スレッドの実行開始
     window.camera_worker.start()
 
 def _handle_new_scanned_isbns(window, new_isbns):
@@ -241,23 +238,11 @@ def stop_camera_session(window):
 
 def switch_camera(window, new_index):
     """
-    実行中のカメラを停止し、新しいインデックスで再起動する
+    実行中のカメラを安全に停止し、新しいインデックスで再起動
     """
-    # 1. 現在のワーカーを停止
     if hasattr(window, "camera_worker") and window.camera_worker.isRunning():
         window.camera_worker.stop()
-        window.camera_worker.wait()
-        del window.camera_worker
-    
-    QThread.msleep(800)
+        window.camera_worker.wait() # 完全に止まるのを待つ
 
-    # 2. 新しいインデックスでワーカーを生成
-    window.camera_worker = CameraWorker(camera_index=new_index)
-    
-    # 3. 再結線（start_camera_session と同じ内容）
-    window.camera_worker.frame_ready.connect(window.update_camera_preview)
-    window.camera_worker.isbns_ready.connect(lambda isbns: _handle_new_scanned_isbns(window, isbns))
-    window.camera_worker.error_occurred.connect(window.show_error)
-
-    # 4. 開始
-    window.camera_worker.start()
+    # 余計な sleep は入れず、即座に再開
+    start_camera_session(window, new_index)
