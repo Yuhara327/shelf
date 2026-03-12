@@ -145,3 +145,9 @@ QLabel#readcount {
     background-color: #d3edff;
     color: #007ACC;
 }
+
+QPushButton#loadbutton {
+        border: 1px solid;
+        border-color: #D9D8DB;
+        padding: 10px 30px;
+}

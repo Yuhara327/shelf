@@ -1,6 +1,6 @@
 # UIとデータロジックの調整を担う。
 from src import models
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtWidgets import QFileDialog
 from src import models, utils
 import asyncio
@@ -129,3 +129,135 @@ def handle_batch_images(window):
 
     # 6. Viewの更新
     window.load_db()
+
+class CameraWorker(QThread):
+    frame_ready = Signal(object)
+    isbns_ready = Signal(list)
+    error_occurred = Signal(str)
+
+    def __init__(self, camera_index=0):
+        super().__init__()
+        self.camera_index = camera_index
+        self._is_running = True
+    
+    def run(self):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        self.loop = loop # loopを保持しておく
+        try:
+            loop.run_until_complete(self._process_stream())
+        except Exception as e:
+            self.error_occurred.emit(str(e))
+        finally:
+            # 未完了のタスクをキャンセルしてループを閉じる
+            pending = asyncio.all_tasks(loop)
+            for task in pending:
+                task.cancel()
+            loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+            loop.close()
+    async def _process_stream(self):
+        # utilsの非同期ジェネレータを消費するループ
+        async for data in utils.read_barcode_from_camera(self.camera_index):
+            if not self._is_running:
+                break
+
+            status = data.get("status")
+            if status != "SUCCESS":
+                self.error_occurred.emit(status)
+                break
+
+            frame = data.get("frame")
+            new_isbns = data.get("new_isbns")
+
+            if frame is not None:
+                self.frame_ready.emit(frame)
+            if new_isbns:
+                self.isbns_ready.emit(new_isbns)
+    
+    def stop(self):
+        self._is_running = False
+
+def start_camera_session(window, camera_index=0):
+    # 既に実行中の場合は処理しない
+    if hasattr(window, "camera_worker") and window.camera_worker.isRunning():
+        return
+
+    # 今回のセッションで読み取ったISBNを保持するリストをWindowオブジェクトに付与
+    window.session_isbns = []
+
+    # ワーカースレッドの生成とシグナルの結線
+    window.camera_worker = CameraWorker(camera_index=0)
+    window.camera_worker.frame_ready.connect(window.update_camera_preview) # View側の描画メソッドへ
+    window.camera_worker.isbns_ready.connect(lambda isbns: _handle_new_scanned_isbns(window, isbns))
+    window.camera_worker.error_occurred.connect(window.show_error)
+
+    # スレッドの実行開始
+    window.camera_worker.start()
+
+def _handle_new_scanned_isbns(window, new_isbns):
+    """
+    Workerから新規ISBNを受け取った際の処理。セッションリストに追加し、UIを更新する。
+    """
+    window.session_isbns.extend(new_isbns)
+    window.update_scanned_list_ui(new_isbns) # View側のリスト更新メソッドへ
+
+def stop_camera_session(window):
+    """
+    カメラ読み取りセッションを終了し、蓄積されたデータをDBへ登録する。
+    """
+    # 1. ワーカースレッドが「存在し」かつ「実行中」であれば、安全に停止させる
+    if hasattr(window, "camera_worker") and window.camera_worker.isRunning():
+        window.camera_worker.stop()
+        window.camera_worker.wait() # リソースが安全に解放されるまで待機
+
+    # --- これ以降の処理は、スレッドが途中でエラー終了していても必ず実行される ---
+
+    # 2. 蓄積データの取得
+    scanned_isbns = getattr(window, "session_isbns", [])
+    if not scanned_isbns:
+        window.show_info("読み取られたバーコードはありませんでした。")
+        window.clear_camera_ui() # 何も読まれていなくても必ずUIを閉じる
+        return
+
+    # 3. データベースへの一括登録
+    added, apierror, already = [], [], []
+    for isbn in scanned_isbns:
+        try:
+            res = models.addlibrary(isbn)
+            if res == "ADD_SUCCEED": added.append(isbn)
+            elif res == "ADD_BUT_NO_DATA": apierror.append(isbn)
+            elif res == "ALREADY_EXIST": already.append(isbn)
+        except Exception as e:
+            window.show_error(f"ISBN {isbn} の処理中にエラー: {str(e)}")
+
+    # 4. 結果の通知とUIの更新
+    if added: window.show_info(f"追加成功: {added}")
+    if apierror: window.show_error(f"データなし（空作成）: {apierror}")
+    if already: window.show_error(f"既に存在: {already}")
+
+    window.load_db()         # メインテーブルの再読み込み
+    window.clear_camera_ui() # 最後に必ずUIを閉じる
+
+
+def switch_camera(window, new_index):
+    """
+    実行中のカメラを停止し、新しいインデックスで再起動する
+    """
+    # 1. 現在のワーカーを停止
+    if hasattr(window, "camera_worker") and window.camera_worker.isRunning():
+        window.camera_worker.stop()
+        window.camera_worker.wait()
+        del window.camera_worker
+    
+    QThread.msleep(800)
+
+    # 2. 新しいインデックスでワーカーを生成
+    window.camera_worker = CameraWorker(camera_index=new_index)
+    
+    # 3. 再結線（start_camera_session と同じ内容）
+    window.camera_worker.frame_ready.connect(window.update_camera_preview)
+    window.camera_worker.isbns_ready.connect(lambda isbns: _handle_new_scanned_isbns(window, isbns))
+    window.camera_worker.error_occurred.connect(window.show_error)
+
+    # 4. 開始
+    window.camera_worker.start()
