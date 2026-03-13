@@ -3,7 +3,7 @@ Shelfは、個人向け蔵書管理ソフトウェアです。
 バーコードの写真から簡単に書籍のデータベースを作成し一覧できます。  
 MacOS上で動作します。  
 
-[ダウンロード](https://www.dropbox.com/scl/fi/z5eodsae1h0umbh2l4ccd/Shelf.zip?rlkey=5i4i00m9c2nm7z19fj12cci73&st=5eahg6qd&dl=1)
+[ダウンロード](https://www.dropbox.com/scl/fi/gw04ehu32w5to6am2duk2/Shelf.zip?rlkey=xa2uwykk262uo5m7ztvgfgzqm&st=80x759ej&dl=1)
 
 # 利用方法
 ## はじめに 
