@@ -151,3 +151,25 @@ QPushButton#loadbutton {
         border-color: #D9D8DB;
         padding: 10px 30px;
 }
+
+QListWidget {
+    border: 1px solid;
+    border-color: #D9D8DB;
+    border-radius: 7px;
+    background-color: #F3F3F4;
+    color: black;
+    font-size: 14px;
+}
+
+QListWidget::item {
+    font-size: 14px;
+    background: #F3F3F4;
+    color: black;
+}
+
+QListWidget::item:selected {
+    font-size: 14px;
+    background: #DEDEE1;
+    /* 選択されたセルの背景色 */
+    color: black;
+}

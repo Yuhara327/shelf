@@ -151,3 +151,25 @@ QLabel#readcount {
     background-color: #d3edff;
     color: #007ACC;
 }
+
+QListWidget {
+    border: 1px solid;
+    border-color: #5E5E5E;
+    border-radius: 7px;
+    background-color: #484848;
+    color: white;
+    font-size: 14px;
+}
+
+QListWidget::item {
+    font-size: 14px;
+    background: #484848;
+    color: white;
+}
+
+QListWidget::item:selected {
+    font-size: 14px;
+    background: #252526;
+    /* 選択されたセルの背景色 */
+    color: white;
+}
